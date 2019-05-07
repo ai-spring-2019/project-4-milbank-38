@@ -77,12 +77,276 @@ def accuracy(nn, pairs):
 
     return 1 - (true_positives / total)
 
-################################################################################
-### Neural Network code goes here
+def component_sub(y, hw):
+    vec = []
+
+    for i in range(len(y)):
+        diff = y[i] - hw[i]
+        vec.append(diff)
+
+    return vec
+
+#______________________________________________________________________________
+#
+#   Neural Network classes
+#
+#______________________________________________________________________________
+
+def learning_rate(epochs):
+    return 1000 / (1000 + epochs)
+
+class Node:
+
+    def __init__(self):
+        self.activation = 1.0
+
+    def __str__(self):
+        return str(self.activation)
+
+    def __repr__(self):
+        return str(self.activation)
+
+    def set_input(self, input):
+        self.activation = input
+
+class DummyNode(Node):
+
+    def __repr__(self):
+        return "Dummy: " + str(self.activation)
+
+    def __str__(self):
+        return "Dummy: " + str(self.activation)
+
+class NeuralNetwork:
+    
+    def __init__(self, layers):
+        self.layers = self.create_network(layers)
+        self.weights = self.create_weights(layers)
+
+        self.inputs = self.layers[0]
+        self.outputs = self.layers[-1]
+
+    def set_inputs(self, values):
+
+        wo_dummy = values[1:]
+
+        for val in range(len(wo_dummy)):
+            node = self.inputs[val]
+            node.set_input(wo_dummy[val])
+
+    def predict_class(self):
+        
+        # Keep track of output node with highest probability
+        max_activation = -1000000
+        max_index = 0
+
+        for i in range(len(self.outputs) - 1):
+            if self.outputs[i].activation > max_activation:
+                max_index = i 
+                max_activation = self.outputs[i].activation
+
+        if max_activation <= 0.5:
+            return 0
+
+        return 1
+
+    def activation(self, value, log=False):
+        
+        if log:
+            return logistic(value)
+        else:
+            if value >= 0:
+                return 1
+            else:
+                return 0
+
+    def calculate_inputs(self, node, layer):
+
+        # Get the correct weight matrix
+        weight_layer = self.weights[layer - 1]
+
+        # Find inputs to specific node
+        node_weights = weight_layer[node]
+
+        # Find nodes in previous layer
+        prev_nodes = self.layers[layer - 1]
+
+        # Create a list of activations from nodes in previous layer
+        activations = [ node.activation for node in prev_nodes ]
+
+        # Return input to node i as the product of (w * x)
+        return dot_product(node_weights, activations)
+
+    def forward_propagate(self, input):
+
+        # Set activations at input layer        
+        self.set_inputs(input)
+
+        # Iterate through layers except input layer
+        for layer in range(1, len(self.layers)):
+
+            # Get all nodes in current layer
+            nodes = self.layers[layer]
+
+            # Index through nodes in layer
+            for i in range(len(nodes) - 1):
+
+                # Calculate input at the ith node in the layer
+                input = self.calculate_inputs(i, layer)
+
+                # Set activation at node i
+                nodes[i].activation = self.activation(input, True)
+            
+    def back_propagation_learning(self, training):
+
+        epochs = 1
+
+        while epochs < 1000:
+
+            for pair in training:
+
+                # Propagate the inputs forward to compute the outputs
+                self.forward_propagate(pair[0])
+
+                # Get activations of nodes in the output layer
+                outputs = [ node.activation for node in self.outputs ]
+
+                # Vector-wise subtraction to get errors at components in output
+                err_vector = component_sub(pair[1], outputs)
+
+                # Vector maintaining deltas 
+                output_deltas = []
+
+                # Compute deltas for each output node
+                for k in range(len(self.outputs) - 1):
+
+                    # Find kth node in output layer
+                    node_k = self.outputs[k]
+
+                    # Compute derivative of activation function (from class)
+                    act_deriv = node_k.activation * (1 - node_k.activation)
+
+                    # Compute error at output node k
+                    err_k = err_vector[k] * act_deriv
+
+                    # Add kth node error to vector of deltas
+                    output_deltas.append(err_k)
+
+                # Maintain new list of deltas for every layer
+                layer_deltas = [output_deltas]
+
+                # Start iteration from first hidden node layer
+                back_layers = len(self.layers) - 2
+
+                # Propagate deltas backward from output layer to input layer
+                for i in range(back_layers, -1, -1):
+
+                    # Deltas in current layer
+                    curr_deltas = []
+
+                    # Find weights between current layer and previous layer
+                    weights_at_layer = self.weights[i]
+
+                    # Iterate through nodes in current layer and modify deltas
+                    for j in range(len(self.layers[i]) - 1):
+                        
+                        # Nodes in current layer
+                        nodes = self.layers[i]
+
+                        # Compute derivative of activation function (from class)
+                        act_deriv = nodes[j].activation * (1 - nodes[j].activation)
+
+                        # Use deltas from previously calculated layer, at pos 0
+                        delta_k = layer_deltas[0]
+
+                        # Get weights between current layer for node j
+                        weights = [ weight[j] for weight in weights_at_layer ]
+
+                        act_err = 0
+                        for err in range(len(delta_k)):
+                            act_err += delta_k[err] * weights[err]
+
+                        # Add ith error to delta vector for current layer
+                        curr_deltas.append(act_deriv * act_err)
+
+                    layer_deltas.insert(0, curr_deltas)
 
 
+                # Determine learning rate for current iteration
+                rate = learning_rate(epochs)
 
+                # Iterate through layers in network
+                for l in range(len(self.weights)):
 
+                    # Find all weights from layer i to layer j
+                    weights_between_layers = self.weights[l]
+
+                    # Update all weights in current layer
+                    for j in range(len(weights_between_layers)):
+
+                        weights = weights_between_layers[j]
+
+                        for i in range(len(weights)):
+
+                            # Find activation for node i in layer l
+                            act = self.layers[l][i].activation
+
+                            # Find delta for node j at layer l
+                            delta_j = layer_deltas[l + 1][j]
+
+                            weights[i] = weights[i] + (rate * act * delta_j)
+
+            epochs += 1
+
+    def create_network(self, layers):
+
+        network = []
+
+        for nodes in layers:
+
+            # Create an extra node to account for dummy variable
+            num_nodes = nodes
+
+            curr_layer = [ Node() for i in range(num_nodes) ]
+
+            curr_layer.append(DummyNode())
+
+            network.append(curr_layer)
+
+        return network
+
+    def create_weights(self, layers):
+
+        # Contains weight matrices at each layer in network
+        weights = []
+
+        for i in range(len(layers) - 1):
+            
+            # Create a matrix w/ dimensions: num nodes in layer x num weights
+            matrix_at_layer = []
+
+            # Number of rows = Number nodes in arrival layer 
+            nodes_in_layer = layers[i + 1]
+
+            # Number of cols = Number of nodes in departing layer + 1 dummy
+            num_weights = layers[i] + 1
+
+            for j in range(nodes_in_layer):
+
+                # Create row of randomized weights
+                node_weights = [ random.random() for x in range(num_weights) ]
+
+                matrix_at_layer.append(node_weights)
+
+            weights.append(matrix_at_layer)
+
+        return weights
+
+#______________________________________________________________________________
+#
+#   Main function
+#
+#______________________________________________________________________________
 
 def main():
     header, data = read_data(sys.argv[1], ",")
@@ -96,10 +360,15 @@ def main():
     for example in training:
         print(example)
 
+    inputs = len(pairs[0][0])
+    outputs = len(pairs[0][-1])
+
     ### I expect the running of your program will work something like this;
     ### this is not mandatory and you could have something else below entirely.
-    # nn = NeuralNetwork([3, 6, 3])
-    # nn.back_propagation_learning(training)
+    nn = NeuralNetwork([inputs, 4, outputs])
+    nn.back_propagation_learning(training)
+
+    print(accuracy(nn, training))
 
 if __name__ == "__main__":
     main()
