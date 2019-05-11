@@ -4,7 +4,9 @@ PLEASE DOCUMENT HERE
 Usage: python3 project3.py DATASET.csv
 """
 
+import os
 import csv, sys, random, math
+import argparse
 
 def read_data(filename, delimiter=",", has_header=True):
     """Reads datafile using given delimiter. Returns a header and a list of
@@ -51,7 +53,7 @@ def logistic(x):
         return 0.0
     return 1.0 / denom
 
-def accuracy(nn, pairs):
+def accuracy(nn, pairs, full=False, multi=False):
     """Computes the accuracy of a network on given pairs. Assumes nn has a
     predict_class method, which gives the predicted class for the last run
     forward_propagate. Also assumes that the y-values only have a single
@@ -68,12 +70,15 @@ def accuracy(nn, pairs):
 
     for (x, y) in pairs:
         nn.forward_propagate(x)
-        class_prediction = nn.predict_class()
-        if class_prediction != y[0]:
-            true_positives += 1
 
-        # outputs = nn.get_outputs()
-        # print("y =", y, ",class_pred =", class_prediction, ", outputs =", outputs)
+        if full:
+            actual = y
+        else:
+            actual = y[0]
+
+        class_prediction = nn.predict_class(full, multi)
+        if class_prediction != actual:
+            true_positives += 1
 
     return 1 - (true_positives / total)
 
@@ -134,8 +139,32 @@ class NeuralNetwork:
             node = self.inputs[val]
             node.set_input(wo_dummy[val])
 
-    def predict_class(self):
+    def predict_class(self, full_result=False, multi_class=False):
         
+        # With single-output network, make binary choice
+        if len(self.outputs[:-1]) == 1:
+            if self.outputs[0].activation <= 0.5:
+                return 0
+            return 1
+
+        # Check if the entire (rounded) output layer is needed
+        if full_result:
+
+            result = []
+
+            # Round outputs activations from all output nodes
+            for node in self.outputs[:-1]:
+                if node.activation <= 0.5:
+                    result.append(0)
+                else:
+                    result.append(1)
+
+            return result
+
+        elif multi_class:
+            closest_class = round(self.outputs[0].activation)
+            return closest_class
+
         # Keep track of output node with highest probability
         max_activation = -1000000
         max_index = 0
@@ -145,10 +174,7 @@ class NeuralNetwork:
                 max_index = i 
                 max_activation = self.outputs[i].activation
 
-        if max_activation <= 0.5:
-            return 0
-
-        return 1
+        return max_index
 
     def activation(self, value, log=False):
         
@@ -193,7 +219,7 @@ class NeuralNetwork:
 
                 # Calculate input at the ith node in the layer
                 input = self.calculate_inputs(i, layer)
-
+                
                 # Set activation at node i
                 nodes[i].activation = self.activation(input, True)
             
@@ -344,12 +370,81 @@ class NeuralNetwork:
 
 #______________________________________________________________________________
 #
+#   Cross-Validation
+#
+#______________________________________________________________________________
+
+
+def k_fold_cross_validation(structure, data, full_output=False, multi_class=False, k=5):
+
+    # Shuffle dataset
+    random.shuffle(data)
+
+    # Find size of each subset
+    size = math.ceil(len(data) / k)
+
+    # Split data into k-sized chunks
+    subsets = [ data[i:i + size] for i in range(0, len(data), size) ]
+    
+    # Sum of accuracy over k iterations of validation
+    sum = 0
+
+    # Every k-sized chunk in data will be used as test 
+    for i in range(0, len(subsets)):
+
+        # Remove test chunk from training data
+        set = [ j for j in subsets if j != subsets[i] ]
+
+        # Join individual chunks in training data
+        training = [item for subset in set for item in subset]
+
+        # Set test data to be the ith k-chunk of the data
+        test = subsets[i]
+
+        # Initialize the neural network 
+        nn = NeuralNetwork(structure)
+
+        # Learn weights from training data
+        nn.back_propagation_learning(training)
+
+        # Maintain running sum of accuracy on unseen test data
+        sum += accuracy(nn, test, full_output, multi_class)
+
+    # Return average accuracy over k rounds 
+    return sum / len(subsets)
+
+#______________________________________________________________________________
+#
 #   Main function
 #
 #______________________________________________________________________________
 
-def main():
-    header, data = read_data(sys.argv[1], ",")
+def find_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--f", 
+                        default="",
+                        help="Filename")
+    parser.add_argument("--v",
+                        type=bool, 
+                        default=False,
+                        help="Use k-fold crossover validation",
+                        required=False)
+    parser.add_argument("--l",
+                        type=int, 
+                        default=0,
+                        help="Number of hidden layers",
+                        required=False)
+    parser.add_argument("--n", 
+                        type=int, 
+                        default=0,
+                        help="Nodes per hidden layer",
+                        required=False)
+    args = parser.parse_args()
+    return args
+
+def run_net(file, nodes=0, layers=0, validation=False):
+
+    header, data = read_data(file, ",")
 
     pairs = convert_data_to_pairs(data, header)
 
@@ -357,18 +452,38 @@ def main():
     training = [([1.0] + x, y) for (x, y) in pairs]
 
     # Check out the data:
-    for example in training:
-        print(example)
+    #for example in training:
+    #    print(example)
 
+    # Determine input and output structures from data
     inputs = len(pairs[0][0])
     outputs = len(pairs[0][-1])
 
-    ### I expect the running of your program will work something like this;
-    ### this is not mandatory and you could have something else below entirely.
-    nn = NeuralNetwork([inputs, 4, outputs])
-    nn.back_propagation_learning(training)
+    # Create input, hidden layer, and output structure for neural network
+    structure = [inputs] + [nodes for i in range(layers)] + [outputs]
 
-    print(accuracy(nn, training))
+    # Specify measurement parameters
+    full = True
+    multi = False
+
+    if validation:
+        score = k_fold_cross_validation(structure, training, full)
+    else:
+        nn = NeuralNetwork(structure)
+        nn.back_propagation_learning(training)
+
+        score = accuracy(nn, training, full)
+    
+    return score
+
+def main():
+
+    # Find all arguments (optionally required to run)
+    args = find_args()
+    
+    # Run neural network on given file and parameters
+    result = run_net(args.f, args.n, args.l, args.v)
+    print("Result: ", result)
 
 if __name__ == "__main__":
     main()
