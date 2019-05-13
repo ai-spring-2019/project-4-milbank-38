@@ -1,3 +1,12 @@
+#______________________________________________________________________________
+#
+#   Project 4: Neural Network
+#   Author: Oliver Keh
+#   Date: 5/13/2019
+#
+#   This is a program that automates normalizing a given dataset so that the
+#   neural network can work on data that ranges in [0, 1].
+#______________________________________________________________________________
 
 import sys
 from sklearn import preprocessing

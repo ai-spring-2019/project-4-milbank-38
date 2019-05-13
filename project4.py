@@ -10,6 +10,9 @@
 #   2. If you want to collect varied data using different sized networks:
 #      --> $ python3 data_testing.py <f>
 #
+#   To normalize a dataset:
+#   $ python3 data_preprocessing.py <f>
+#
 #   Where:                                              Requirement:
 #   <f> = file name of desired dataset (str)            --> required
 #   <n> = number of nodes per hidden layer (int)        --> optional
@@ -110,6 +113,8 @@ def learning_rate(epochs):
     return 1000 / (1000 + epochs)
 
 class Node:
+    """ A class that can act as any node in the network and contains its
+        own activation level. """
 
     def __init__(self):
         self.activation = 1.0
@@ -134,8 +139,14 @@ class DummyNode(Node):
         return "Dummy: " + str(self.activation)
 
 class NeuralNetwork:
-    
+    """ This class implements a neural network that takes a description
+        of the desired structure and initializes the network. It also
+        fully encompasses both forward and back propagation so that
+        informatio about the network can be easily accessed. """
+
     def __init__(self, layers):
+
+        # Initialize the neural network with desired nodes and layers
         self.layers = self.create_network(layers)
         self.weights = self.create_weights(layers)
 
@@ -143,7 +154,10 @@ class NeuralNetwork:
         self.outputs = self.layers[-1]
 
     def set_inputs(self, values):
+        """ Given a list of features, this function assigns the values
+            of those features to each of the input nodes. """
 
+        # Ignore the dummy variable, already considered at initialization
         wo_dummy = values[1:]
 
         for val in range(len(wo_dummy)):
@@ -151,6 +165,10 @@ class NeuralNetwork:
             node.set_input(wo_dummy[val])
 
     def predict_class(self, full_result=False, multi_class=False):
+        """ This method can use several different ways of predicting classes
+            depending on the parameters passed. It works on multi 
+            classification and binary decision problems, as well as 
+            problems where the full output layer is needed. """
         
         # With single-output network, make binary choice
         if len(self.outputs[:-1]) == 1:
@@ -188,6 +206,8 @@ class NeuralNetwork:
         return max_index
 
     def activation(self, value, log=False):
+        """ A simple function allowing the user to decide whether to
+            use a hard threshold or a logistic function for learning. """
         
         if log:
             return logistic(value)
@@ -198,6 +218,10 @@ class NeuralNetwork:
                 return 0
 
     def calculate_inputs(self, node, layer):
+        """ Calculate the activation for a specific node in the network
+            by taking the dot product of the activations of the nodes
+            in the previous layer with the weights of the links to 
+            the current node. """
 
         # Get the correct weight matrix
         weight_layer = self.weights[layer - 1]
@@ -215,6 +239,9 @@ class NeuralNetwork:
         return dot_product(node_weights, activations)
 
     def forward_propagate(self, input):
+        """ Propagate input values forward to the output nodes by
+            calculating the activation of each node in the hidden 
+            layers using the weights of the links connecting them. """
 
         # Set activations at input layer        
         self.set_inputs(input)
@@ -235,6 +262,10 @@ class NeuralNetwork:
                 nodes[i].activation = self.activation(input, True)
             
     def back_propagation_learning(self, training):
+        """ This method takes a set of training data and 'learns' the weights
+            of the links connecting nodes between layers by back-propagating
+            the errors found after forward-propagating. This uses a decaying
+            learning rate and runs for 1000 epochs.  """
 
         epochs = 1
 
@@ -336,6 +367,9 @@ class NeuralNetwork:
             epochs += 1
 
     def create_network(self, layers):
+        """ Simply initializes the neural network structure of nodes.
+            This method implicitly handles setting the activations of
+            nodes to 1 and also including a dummy node in every layer. """
 
         # Initialize empty array of node layers
         network = []
@@ -357,6 +391,10 @@ class NeuralNetwork:
         return network
 
     def create_weights(self, layers):
+        """ Simply initializes the matrices describing the links connecting
+            the nodes between layers. Weights are initialized to a random
+            float in [0, 1] and each element of the weights list corresponds
+            to one matrix. """
 
         # Contains weight matrices at each layer in network
         weights = []
@@ -391,6 +429,10 @@ class NeuralNetwork:
 
 
 def k_fold_cross_validation(structure, data, full_output=False, multi_class=False, k=5):
+    """ This method implements the k-fold cross validation technique that 
+        trains the network on some subset of the total data available and
+        then tests its performance on the rest of the data that it hasn't
+        seen yet. """
 
     # Shuffle dataset
     random.shuffle(data)
@@ -435,29 +477,27 @@ def k_fold_cross_validation(structure, data, full_output=False, multi_class=Fals
 #______________________________________________________________________________
 
 def find_args():
+    """ Function to parse command line arguments. """
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("--f", 
-                        default="",
-                        help="Filename")
-    parser.add_argument("--v",
-                        type=bool, 
-                        default=False,
+    parser.add_argument("--f", default="", help="Filename")
+    parser.add_argument("--v", type=bool, default=False,
                         help="Use k-fold crossover validation",
                         required=False)
-    parser.add_argument("--l",
-                        type=int, 
-                        default=0,
+    parser.add_argument("--l", type=int, default=0,
                         help="Number of hidden layers",
                         required=False)
-    parser.add_argument("--n", 
-                        type=int, 
-                        default=0,
+    parser.add_argument("--n", type=int, default=0,
                         help="Nodes per hidden layer",
                         required=False)
     args = parser.parse_args()
     return args
 
 def run_net(file, nodes=0, layers=0, validation=False):
+    """ This function takes input parameters for the structure of the neural 
+        network and trains/tests it on a given data file. This method is
+        separate from the main function so that it can be called
+        externally from other python files for data collection. """
 
     header, data = read_data(file, ",")
 

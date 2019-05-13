@@ -1,3 +1,14 @@
+#______________________________________________________________________________
+#
+#   Project 4: Neural Network
+#   Author: Oliver Keh
+#   Date: 5/13/2019
+#
+#   This is a program that automates the data collection process. Using a 
+#   standardized number of hidden layers and nodes, it creates a table of
+#   data that is used in the report.
+#______________________________________________________________________________
+
 import sys, os, csv, datetime
 import project4
 
@@ -35,7 +46,7 @@ def main():
             print("Parameters: layers={}, nodes={}, validation={}".format(layer, nodes, validation))
             # Run neural network with parameters
             result = project4.run_net(file, nodes, layer, validation)
-            print("     Result={}%".format(result))
+            print("     Result={}%".format(round(result * 100, 2)))
 
             # Convert result to percentage with two decimal places
             percentage = round(result * 100, 2)
