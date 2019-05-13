@@ -1,4 +1,4 @@
-import sys, os, csv
+import sys, os, csv, datetime
 import project4
 
 def write_results(file, performance):
@@ -12,16 +12,20 @@ def main():
     file = sys.argv[1]
 
     print("\nRunning neural network on: {}".format(file))
+    print("Starting at: {}".format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
 
     max_hidden_layers = 3
     hidden_nodes = [1, 2, 3, 4, 5, 6, 12]
-    validation = False
+    validation = True
 
     performance = {}
 
     # Find results for base case with zero hidden nodes/layers
     print("Parameters: layers={}, nodes={}, validation={}".format(0, 0, validation))
-    performance[0] = [project4.run_net(file, 0, 0, validation)] + (['-'] * len(hidden_nodes))
+    basic_result = project4.run_net(file, 0, 0, validation)
+    print("     Result={}%".format(basic_result))
+
+    performance[0] = [round(basic_result * 100, 2)] + (['-'] * len(hidden_nodes))
 
     for layer in range(1, max_hidden_layers + 1):
 
@@ -31,6 +35,7 @@ def main():
             print("Parameters: layers={}, nodes={}, validation={}".format(layer, nodes, validation))
             # Run neural network with parameters
             result = project4.run_net(file, nodes, layer, validation)
+            print("     Result={}%".format(result))
 
             # Convert result to percentage with two decimal places
             percentage = round(result * 100, 2)
@@ -41,7 +46,8 @@ def main():
     # Determine new file name for results
     new_filename = "results-" + file
     print("Completed run. Outputting to: {}\n".format(new_filename))
-
+    print("Finishing time: {}".format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+    
     # Write output to csv file
     write_results(new_filename, performance)
 

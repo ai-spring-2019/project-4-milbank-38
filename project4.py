@@ -1,8 +1,22 @@
-"""
-PLEASE DOCUMENT HERE
-
-Usage: python3 project3.py DATASET.csv
-"""
+#______________________________________________________________________________
+#
+#   Project 4: Neural Network
+#   Author: Oliver Keh
+#   Date: 5/13/2019
+#
+#   There are 2 ways to run this program:
+#   1. If you want to run the network once on a specific structure:
+#      --> $ python3 project4.py --f <f> --n <n> --l <n> --v <v>
+#   2. If you want to collect varied data using different sized networks:
+#      --> $ python3 data_testing.py <f>
+#
+#   Where:
+#   <f> = file name of desired dataset (str)
+#   <n> = number of nodes per hidden layer (int)
+#   <l> = number of hidden layers (int)
+#   <v> = use/don't use k-fold cross-validation (bool)
+#
+#______________________________________________________________________________
 
 import os
 import csv, sys, random, math
@@ -56,14 +70,7 @@ def logistic(x):
 def accuracy(nn, pairs, full=False, multi=False):
     """Computes the accuracy of a network on given pairs. Assumes nn has a
     predict_class method, which gives the predicted class for the last run
-    forward_propagate. Also assumes that the y-values only have a single
-    element, which is the predicted class.
-
-    Optionally, you can implement the get_outputs method and uncomment the code
-    below, which will let you see which outputs it is getting right/wrong.
-
-    Note: this will not work for non-classification problems like the 3-bit
-    incrementer."""
+    forward_propagate. """
 
     true_positives = 0
     total = len(pairs)
@@ -71,6 +78,7 @@ def accuracy(nn, pairs, full=False, multi=False):
     for (x, y) in pairs:
         nn.forward_propagate(x)
 
+        # Determine what subset of the results vector to use
         if full:
             actual = y
         else:
@@ -98,6 +106,7 @@ def component_sub(y, hw):
 #______________________________________________________________________________
 
 def learning_rate(epochs):
+    """ A simple decaying learning rate based on the number of epochs"""
     return 1000 / (1000 + epochs)
 
 class Node:
@@ -115,6 +124,8 @@ class Node:
         self.activation = input
 
 class DummyNode(Node):
+    """ A subclass of the Node class that helps with differentiating
+        between regular nodes and dummy nodes when output. """
 
     def __repr__(self):
         return "Dummy: " + str(self.activation)
@@ -326,6 +337,7 @@ class NeuralNetwork:
 
     def create_network(self, layers):
 
+        # Initialize empty array of node layers
         network = []
 
         for nodes in layers:
@@ -333,10 +345,13 @@ class NeuralNetwork:
             # Create an extra node to account for dummy variable
             num_nodes = nodes
 
+            # Generate desired number of nodes at current hidden layer
             curr_layer = [ Node() for i in range(num_nodes) ]
 
+            # Append a dummy node to the end of the layer
             curr_layer.append(DummyNode())
 
+            # Add the layer to the network
             network.append(curr_layer)
 
         return network
@@ -462,8 +477,8 @@ def run_net(file, nodes=0, layers=0, validation=False):
     # Create input, hidden layer, and output structure for neural network
     structure = [inputs] + [nodes for i in range(layers)] + [outputs]
 
-    # Specify measurement parameters
-    full = True
+    # Specify measurement parameters, note: only True in specific cases, ie. incrementer
+    full = False
     multi = False
 
     if validation:
