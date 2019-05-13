@@ -10,11 +10,11 @@
 #   2. If you want to collect varied data using different sized networks:
 #      --> $ python3 data_testing.py <f>
 #
-#   Where:
-#   <f> = file name of desired dataset (str)
-#   <n> = number of nodes per hidden layer (int)
-#   <l> = number of hidden layers (int)
-#   <v> = use/don't use k-fold cross-validation (bool)
+#   Where:                                              Requirement:
+#   <f> = file name of desired dataset (str)            --> required
+#   <n> = number of nodes per hidden layer (int)        --> optional
+#   <l> = number of hidden layers (int)                 --> optional
+#   <v> = use/don't use k-fold cross-validation (bool)  --> optional
 #
 #______________________________________________________________________________
 
