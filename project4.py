@@ -5,7 +5,7 @@
 #   Date: 5/13/2019
 #
 #   There are 2 ways to run this program:
-#   1. If you want to run the network once on a specific structure:
+#   1. If you want to run the network once with a specific structure:
 #      --> $ python3 project4.py --f <f> --n <n> --l <n> --v <v>
 #   2. If you want to collect varied data using different sized networks:
 #      --> $ python3 data_testing.py <f>
