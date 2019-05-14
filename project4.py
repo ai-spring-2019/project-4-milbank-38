@@ -376,11 +376,8 @@ class NeuralNetwork:
 
         for nodes in layers:
 
-            # Create an extra node to account for dummy variable
-            num_nodes = nodes
-
             # Generate desired number of nodes at current hidden layer
-            curr_layer = [ Node() for i in range(num_nodes) ]
+            curr_layer = [ Node() for i in range(nodes) ]
 
             # Append a dummy node to the end of the layer
             curr_layer.append(DummyNode())
